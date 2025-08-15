@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 module.exports = async (req, res) => {
     // CORS headers
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -23,25 +21,29 @@ module.exports = async (req, res) => {
             return res.status(400).json({ error: 'Опис пам\'ятника обов\'язковий' });
         }
 
+        if (!process.env.OPENROUTER_API_KEY) {
+            return res.status(500).json({ error: 'OPENROUTER_API_KEY не налаштований' });
+        }
+
         const systemPrompt = `Ти експерт з дизайну пам'ятників. Створи детальний промпт англійською для генерації зображення пам'ятника з українського опису.
 
-ФОРМАТ: "A professional Ukrainian memorial monument, [опис з розмірами та матеріалами], perfectly centered on granite base, white background, photorealistic, professional monument design, natural daylight, architectural photography, high detail, sharp focus"
+ОБОВ'ЯЗКОВИЙ ФОРМАТ: "A professional Ukrainian memorial monument, [детальний опис з розмірами та матеріалами], perfectly centered on granite base, white background, photorealistic, professional monument design, natural daylight, architectural photography, high detail, sharp focus"
 
-Макс 400 символів.`;
+Максимум 400 символів. Використай всі деталі з опису.`;
 
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://monument-generator.vercel.app',
+                'HTTP-Referer': 'https://monument-gen.vercel.app',
                 'X-Title': 'Monument Generator'
             },
             body: JSON.stringify({
                 model: "openai/gpt-4-turbo-preview",
                 messages: [
                     { role: "system", content: systemPrompt },
-                    { role: "user", content: `Опис: ${description}` }
+                    { role: "user", content: `Опис пам'ятника: ${description}` }
                 ],
                 temperature: 0.7,
                 max_tokens: 500
@@ -49,16 +51,26 @@ module.exports = async (req, res) => {
         });
 
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('OpenRouter error:', errorText);
             throw new Error(`OpenRouter помилка: ${response.status}`);
         }
 
         const data = await response.json();
+        
+        if (!data.choices?.[0]?.message?.content) {
+            throw new Error('Пуста відповідь від ChatGPT');
+        }
+        
         const prompt = data.choices[0].message.content.trim();
         
-        res.json({ success: true, prompt });
+        res.json({ success: true, prompt, length: prompt.length });
 
     } catch (error) {
-        console.error('Prompt error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Prompt generation error:', error);
+        res.status(500).json({ 
+            error: error.message,
+            details: 'Помилка генерації промпта'
+        });
     }
 };
