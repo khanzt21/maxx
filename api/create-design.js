@@ -27,7 +27,6 @@ module.exports = async (req, res) => {
 
         // --- КРОК 1: Створення технічної специфікації за допомогою GPT-4o ---
 
-        // ОНОВЛЕНА, ФІНАЛЬНА СИСТЕМНА ІНСТРУКЦІЯ
         const systemPrompt = `You are an expert technical writer creating a specification for a 3D rendering program. Your goal is to convert a user's Ukrainian description of a monument into a single, detailed, and extremely literal paragraph in English for DALL-E 3.
 
         **CRITICAL RULES:**
@@ -51,7 +50,7 @@ module.exports = async (req, res) => {
                     { role: "system", content: systemPrompt },
                     { role: "user", content: `Create a literal 3D render specification for the following description: "${description}"` }
                 ],
-                temperature: 0.1, // Мінімальна температура для максимальної буквальності
+                temperature: 0.1,
                 max_tokens: 500
             })
         });
@@ -67,9 +66,9 @@ module.exports = async (req, res) => {
         console.log('Generated specification for DALL-E 3:', finalPrompt);
 
 
-        // --- КРОК 2: Генеруємо зображення за допомогою DALL-E 3 ---
+        // --- КРОК 2: Генеруємо зображення за допомогою gpt-image-1 ---
 
-        console.log('Generating image with DALL-E 3...');
+        console.log('Generating image with gpt-image-1 (low quality)...');
 
         const imageCreationResponse = await fetch('https://api.openai.com/v1/images/generations', {
             method: 'POST',
@@ -78,17 +77,17 @@ module.exports = async (req, res) => {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "dall-e-3",
+                model: "gpt-image-1",
                 prompt: finalPrompt,
                 size: "1024x1024",
-                quality: "hd", // Повертаємо HD якість для максимальної чіткості
+                quality: "low", // <--- ЗМІНЕНО НА НАЙНИЖЧУ ЯКІСТЬ
                 n: 1
             })
         });
 
         if (!imageCreationResponse.ok) {
             const errorText = await imageCreationResponse.text();
-            throw new Error(`Помилка генерації зображення (DALL-E 3): ${errorText}`);
+            throw new Error(`Помилка генерації зображення (gpt-image-1): ${errorText}`);
         }
 
         const imageData = await imageCreationResponse.json();
