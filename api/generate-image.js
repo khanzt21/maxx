@@ -23,7 +23,6 @@ module.exports = async (req, res) => {
             return res.status(400).json({ error: 'Тіло запиту має містити JSON-об\'єкт "promptJson"' });
         }
 
-        // Перевіряємо наявність необхідних ключів у JSON
         const requiredKeys = ['base_prompt', 'details', 'centering_conditions', 'style_modifiers'];
         for (const key of requiredKeys) {
             if (!promptJson[key]) {
@@ -31,7 +30,6 @@ module.exports = async (req, res) => {
             }
         }
 
-        // Збираємо фінальний промпт з частин JSON
         const finalPrompt = [
             promptJson.base_prompt,
             promptJson.details,
@@ -42,8 +40,6 @@ module.exports = async (req, res) => {
         if (!process.env.OPENAI_API_KEY) {
             return res.status(500).json({ error: 'API ключ OPENAI_API_KEY не налаштований' });
         }
-
-        console.log('Generating image with DALL-E 3. Final prompt:', finalPrompt);
 
         const response = await fetch('https://api.openai.com/v1/images/generations', {
             method: 'POST',
@@ -62,7 +58,6 @@ module.exports = async (req, res) => {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('OpenAI error:', response.status, errorText);
             throw new Error(`OpenAI помилка: ${response.status}. ${errorText}`);
         }
 
