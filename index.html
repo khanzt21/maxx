@@ -134,6 +134,13 @@
             font-size: 14px;
         }
 
+        .test-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            padding: 10px 20px;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
         .prompt-display {
             background: #2d3748;
             color: #e2e8f0;
@@ -263,6 +270,16 @@
             margin-left: 20px;
         }
 
+        .debug {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 12px;
+            font-family: monospace;
+            display: none;
+        }
+
         @media (max-width: 1024px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -284,6 +301,10 @@
         <div class="main-content">
             <div class="input-section">
                 <h2>📝 Опис пам'ятника</h2>
+                
+                <button class="btn test-btn" onclick="testAPI()">
+                    🔧 Тест API
+                </button>
                 
                 <button class="btn example-btn" onclick="insertExample()">
                     📋 Вставити приклад
@@ -321,6 +342,7 @@
 
                 <div id="error-message" class="error"></div>
                 <div id="success-message" class="success"></div>
+                <div id="debug-info" class="debug"></div>
 
                 <div class="tips">
                     <h4>💡 Поради:</h4>
@@ -384,48 +406,79 @@
             document.getElementById('progress-detail').textContent = detail;
         }
 
+        function showDebug(info) {
+            const debugElement = document.getElementById('debug-info');
+            debugElement.textContent = JSON.stringify(info, null, 2);
+            debugElement.style.display = 'block';
+        }
+
+        async function testAPI() {
+            try {
+                showSuccess('Тестую API...');
+                
+                // Тест health endpoint
+                const healthResponse = await fetch('/api/health');
+                const healthText = await healthResponse.text();
+                
+                console.log('Health response:', healthText);
+                
+                if (healthResponse.ok) {
+                    const healthData = JSON.parse(healthText);
+                    showSuccess(`API працює! ${JSON.stringify(healthData)}`);
+                } else {
+                    showError(`Health API помилка: ${healthResponse.status} - ${healthText}`);
+                }
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                showError(`Тест помилка: ${error.message}`);
+                showDebug({ error: error.message, stack: error.stack });
+            }
+        }
+
+        async function makeAPICall(url, options = {}) {
+            try {
+                console.log(`Calling: ${url}`);
+                const response = await fetch(url, options);
+                const text = await response.text();
+                
+                console.log(`Response status: ${response.status}`);
+                console.log(`Response text: ${text.substring(0, 200)}...`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                }
+                
+                try {
+                    return JSON.parse(text);
+                } catch (parseError) {
+                    throw new Error(`Не валідний JSON: ${text.substring(0, 100)}...`);
+                }
+                
+            } catch (error) {
+                console.error(`API Call Error (${url}):`, error);
+                throw error;
+            }
+        }
+
         async function generatePrompt(description) {
             updateProgress('Створюю промпт...', 'ChatGPT аналізує опис');
             
-            const response = await fetch('/api/generate-prompt', {
+            return await makeAPICall('/api/generate-prompt', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ description })
             });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Помилка промпта');
-            }
-
-            return await response.json();
         }
 
         async function generateImage(prompt, model, aspectRatio) {
             updateProgress('Генерую зображення...', `Модель: ${model}`);
             
-            const response = await fetch('/api/generate-image', {
+            return await makeAPICall('/api/generate-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt, model, aspectRatio })
             });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Помилка зображення');
-            }
-
-            const result = await response.json();
-            
-            if (result.imageUrl) {
-                return result.imageUrl;
-            }
-            
-            if (result.predictionId) {
-                return await waitForCompletion(result.predictionId);
-            }
-            
-            throw new Error('Невідома відповідь');
         }
 
         async function waitForCompletion(predictionId) {
@@ -436,8 +489,7 @@
                 
                 updateProgress('Генерую зображення...', `Очікую... (${attempts}/60)`);
                 
-                const response = await fetch(`/api/check-status/${predictionId}`);
-                const result = await response.json();
+                const result = await makeAPICall(`/api/check-status/${predictionId}`);
                 
                 if (result.imageUrl) {
                     return result.imageUrl;
@@ -480,14 +532,14 @@
             const errorElement = document.getElementById('error-message');
             errorElement.textContent = message;
             errorElement.style.display = 'block';
-            setTimeout(() => errorElement.style.display = 'none', 5000);
+            setTimeout(() => errorElement.style.display = 'none', 10000);
         }
 
         function showSuccess(message) {
             const successElement = document.getElementById('success-message');
             successElement.textContent = message;
             successElement.style.display = 'block';
-            setTimeout(() => successElement.style.display = 'none', 3000);
+            setTimeout(() => successElement.style.display = 'none', 5000);
         }
 
         async function generateMonument() {
@@ -501,7 +553,7 @@
             }
 
             const loadingElement = document.getElementById('loading');
-            const generateBtn = document.querySelector('.btn:not(.example-btn):not(.copy-btn)');
+            const generateBtn = document.querySelector('.btn:not(.example-btn):not(.copy-btn):not(.test-btn)');
 
             try {
                 loadingElement.style.display = 'block';
@@ -510,11 +562,21 @@
                 document.getElementById('prompt-section').style.display = 'none';
                 document.getElementById('download-btn').style.display = 'none';
                 document.getElementById('image-container').innerHTML = '<div class="placeholder">🏛️ Генерується...</div>';
+                document.getElementById('debug-info').style.display = 'none';
                 
                 const promptResult = await generatePrompt(description);
                 displayPrompt(promptResult.prompt);
                 
-                const imageUrl = await generateImage(promptResult.prompt, model, aspectRatio);
+                const imageResult = await generateImage(promptResult.prompt, model, aspectRatio);
+                
+                let imageUrl;
+                if (imageResult.imageUrl) {
+                    imageUrl = imageResult.imageUrl;
+                } else if (imageResult.predictionId) {
+                    imageUrl = await waitForCompletion(imageResult.predictionId);
+                } else {
+                    throw new Error('Невідома відповідь від сервера');
+                }
                 
                 updateProgress('Готово!', 'Пам\'ятник згенеровано');
                 displayImage(imageUrl);
@@ -524,6 +586,7 @@
             } catch (error) {
                 console.error('Помилка:', error);
                 showError(`Помилка: ${error.message}`);
+                showDebug({ error: error.message, stack: error.stack });
                 document.getElementById('image-container').innerHTML = '<div class="placeholder">❌ Помилка</div>';
             } finally {
                 loadingElement.style.display = 'none';
