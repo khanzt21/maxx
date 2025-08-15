@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -9,9 +10,11 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
 
-// Генерация промпта через OpenRouter ChatGPT
+// Обслуживание статических файлов
+app.use(express.static(__dirname));
+
+// API роуты
 app.post('/api/generate-prompt', async (req, res) => {
     try {
         const { description } = req.body;
@@ -40,7 +43,7 @@ app.post('/api/generate-prompt', async (req, res) => {
             headers: {
                 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
+                'HTTP-Referer': process.env.SITE_URL || 'https://monument-generator.vercel.app',
                 'X-Title': 'Monument Design Generator'
             },
             body: JSON.stringify({
@@ -56,7 +59,8 @@ app.post('/api/generate-prompt', async (req, res) => {
 
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+            console.error('OpenRouter error:', errorText);
+            throw new Error(`OpenRouter API error: ${response.status}`);
         }
 
         const data = await response.json();
@@ -81,7 +85,6 @@ app.post('/api/generate-prompt', async (req, res) => {
     }
 });
 
-// Генерация изображения через Replicate
 app.post('/api/generate-image', async (req, res) => {
     try {
         const { prompt, model = 'black-forest-labs/flux-1.1-pro', aspectRatio = '16:9' } = req.body;
@@ -90,7 +93,6 @@ app.post('/api/generate-image', async (req, res) => {
             return res.status(400).json({ error: 'Промпт обов\'язковий' });
         }
 
-        // Различные параметры для разных моделей
         let requestBody;
         
         if (model.includes('flux')) {
@@ -140,12 +142,12 @@ app.post('/api/generate-image', async (req, res) => {
 
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`Replicate API error: ${response.status} - ${errorText}`);
+            console.error('Replicate error:', errorText);
+            throw new Error(`Replicate API error: ${response.status}`);
         }
 
         const prediction = await response.json();
         
-        // Если сразу готово
         if (prediction.status === 'succeeded') {
             const imageUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
             return res.json({ 
@@ -155,12 +157,10 @@ app.post('/api/generate-image', async (req, res) => {
             });
         }
         
-        // Если нужно ждать
         if (prediction.status === 'failed') {
             throw new Error(`Генерація не вдалася: ${prediction.error || 'Невідома помилка'}`);
         }
         
-        // Возвращаем ID для polling
         res.json({ 
             success: true, 
             predictionId: prediction.id,
@@ -175,7 +175,6 @@ app.post('/api/generate-image', async (req, res) => {
     }
 });
 
-// Проверка статуса генерации
 app.get('/api/check-status/:predictionId', async (req, res) => {
     try {
         const { predictionId } = req.params;
@@ -220,16 +219,34 @@ app.get('/api/check-status/:predictionId', async (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+    res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        env: {
+            hasOpenRouter: !!process.env.OPENROUTER_API_KEY,
+            hasReplicate: !!process.env.REPLICATE_API_TOKEN
+        }
+    });
 });
 
 // Главная страница
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Сервер запущений на порту ${PORT}`);
-    console.log(`📱 Фронтенд: http://localhost:${PORT}`);
-    console.log(`🔗 API: http://localhost:${PORT}/api/health`);
+// Обработка всех остальных маршрутов
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+// Экспорт для Vercel
+module.exports = app;
+
+// Для локальной разработки
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`🚀 Сервер запущений на порту ${PORT}`);
+        console.log(`📱 Фронтенд: http://localhost:${PORT}`);
+        console.log(`🔗 API: http://localhost:${PORT}/api/health`);
+    });
+}
