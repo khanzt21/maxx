@@ -48,10 +48,10 @@ module.exports = async (req, res) => {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "dall-e-3",
+                model: "dall-e-2",
                 prompt: finalPrompt,
                 size: "1024x1024",
-                quality: "hd",
+                quality: "standard",
                 n: 1
             })
         });
