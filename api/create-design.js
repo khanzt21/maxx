@@ -25,18 +25,19 @@ module.exports = async (req, res) => {
             return res.status(500).json({ error: 'API ключ OPENAI_API_KEY не налаштований' });
         }
 
-        // --- КРОК 1: Створюємо ідеальний промпт за допомогою GPT-4o ---
+        // --- КРОК 1: Створення технічної специфікації за допомогою GPT-4o ---
 
-        // ОНОВЛЕНА, БІЛЬШ СУВОРА СИСТЕМНА ІНСТРУКЦІЯ
-        const systemPrompt = `You are an expert technical translator for an architectural visualization program. Your ONLY task is to convert a user's technical description of a monument from Ukrainian into a precise, literal, comma-separated list of keywords and phrases in English for a DALL-E 3 image generation model.
+        // ОНОВЛЕНА, ФІНАЛЬНА СИСТЕМНА ІНСТРУКЦІЯ
+        const systemPrompt = `You are an expert technical writer creating a specification for a 3D rendering program. Your goal is to convert a user's Ukrainian description of a monument into a single, detailed, and extremely literal paragraph in English for DALL-E 3.
 
         **CRITICAL RULES:**
-        1.  **DO NOT BE CREATIVE OR ARTISTIC.** Your goal is technical accuracy, not beauty.
-        2.  Translate the user's text literally. Include all specified materials, dimensions, and elements exactly as described.
-        3.  The final output MUST be a single line of comma-separated keywords and phrases. DO NOT write a paragraph.
-        4.  **ALWAYS** include the following mandatory keywords in the final prompt: "professional product photography of a monument, studio lighting, clean white background, photorealistic, 8k, sharp focus, technical architectural visualization, 3D render".`;
+        1.  **ABSOLUTELY DO NOT add any details, objects, textures, or artistic flourishes** that are not explicitly mentioned in the user's description. Your goal is a literal, 1-to-1 translation of the provided facts into a descriptive paragraph.
+        2.  **DO NOT interpret the user's request creatively.** Be a machine.
+        3.  The final output MUST be a single, descriptive paragraph.
+        4.  Begin the paragraph with this exact phrase: **"Ultra-realistic 3D render of a memorial monument:"**
+        5.  After translating the user's description, conclude the paragraph by appending this exact phrase: **", commercial studio photography, perfectly centered on a pure white background, sharp focus, 8k resolution, photorealistic."**`;
 
-        console.log('Creating a technical prompt with GPT-4o...');
+        console.log('Creating a technical specification with GPT-4o...');
 
         const promptCreationResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -48,11 +49,10 @@ module.exports = async (req, res) => {
                 model: "gpt-4o",
                 messages: [
                     { role: "system", content: systemPrompt },
-                    { role: "user", content: `Convert the following Ukrainian monument description into a technical DALL-E 3 prompt: "${description}"` }
+                    { role: "user", content: `Create a literal 3D render specification for the following description: "${description}"` }
                 ],
-                // ОНОВЛЕНА "ТЕМПЕРАТУРА" ДЛЯ ЗМЕНШЕННЯ ТВОРЧОСТІ
-                temperature: 0.2,
-                max_tokens: 400
+                temperature: 0.1, // Мінімальна температура для максимальної буквальності
+                max_tokens: 500
             })
         });
 
@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
         const promptData = await promptCreationResponse.json();
         const finalPrompt = promptData.choices[0].message.content;
 
-        console.log('Generated technical prompt for DALL-E 3:', finalPrompt);
+        console.log('Generated specification for DALL-E 3:', finalPrompt);
 
 
         // --- КРОК 2: Генеруємо зображення за допомогою DALL-E 3 ---
@@ -81,7 +81,7 @@ module.exports = async (req, res) => {
                 model: "dall-e-3",
                 prompt: finalPrompt,
                 size: "1024x1024",
-                quality: "standard",
+                quality: "hd", // Повертаємо HD якість для максимальної чіткості
                 n: 1
             })
         });
