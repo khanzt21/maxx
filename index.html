@@ -367,21 +367,19 @@
 
         async function makeAPICall(url, options = {}) {
             try {
-                console.log(`Calling: ${url}`);
                 const response = await fetch(url, options);
                 const text = await response.text();
                 
-                console.log(`Response status: ${response.status}`);
-                
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${text}`);
+                    try {
+                        const errorJson = JSON.parse(text);
+                        throw new Error(errorJson.error || `HTTP ${response.status}`);
+                    } catch (e) {
+                         throw new Error(`HTTP ${response.status}: ${text}`);
+                    }
                 }
                 
-                try {
-                    return JSON.parse(text);
-                } catch (parseError) {
-                    throw new Error(`Невірна відповідь сервера: ${text.substring(0, 100)}...`);
-                }
+                return JSON.parse(text);
                 
             } catch (error) {
                 console.error(`API Error (${url}):`, error);
@@ -399,13 +397,13 @@
             });
         }
 
-        async function generateImage(prompt) {
+        async function generateImage(promptJsonData) {
             updateProgress('Генерую зображення...', 'Створюю дизайн через DALL-E 3');
             
             return await makeAPICall('/api/generate-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
+                body: JSON.stringify({ promptJson: promptJsonData })
             });
         }
 
@@ -451,10 +449,10 @@
                 document.getElementById('download-btn').style.display = 'none';
                 document.getElementById('image-container').innerHTML = '<div class="placeholder">🏛️ Створюється дизайн...</div>';
                 
-                // Генерація промпта
+                // Крок 1: Генерація промпта
                 const promptResult = await generatePrompt(description);
                 
-                // Генерація зображення
+                // Крок 2: Генерація зображення з правильним ключем
                 const imageResult = await generateImage(promptResult.prompt);
                 
                 if (!imageResult.imageUrl) {
