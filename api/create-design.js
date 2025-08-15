@@ -27,7 +27,6 @@ module.exports = async (req, res) => {
 
         // --- КРОК 1: Створення "супер-промпта" за вашим шаблоном ---
 
-        // ОНОВЛЕНА, ДУЖЕ ДЕТАЛЬНА СИСТЕМНА ІНСТРУКЦІЯ З ВАШИМ ПРИКЛАДОМ
         const systemPrompt = `You are an expert prompt engineer specializing in creating hyper-detailed, photorealistic prompts for the gpt-image-1 model.
 Your task is to take a user's simple description of a monument in Ukrainian and expand it into a comprehensive, highly detailed prompt in English, precisely following the structure and style of the template below.
 
@@ -93,11 +92,11 @@ Material: polished black gabbro granite with sharp, clean edges. Lighting: soft 
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "gpt-image-1",      // ОНОВЛЕНА МОДЕЛЬ
+                model: "gpt-image-1",
                 prompt: finalPrompt,
-                size: "1024x1792",       // ОНОВЛЕНИЙ РОЗМІР (ВЕРТИКАЛЬНИЙ)
-                quality: "hd",
-                n: 1                     // ОНОВЛЕНА КІЛЬКІСТЬ
+                size: "1024x1792",
+                quality: "high", // <--- ВИПРАВЛЕНО З "hd" НА "high"
+                n: 1
             })
         });
 
