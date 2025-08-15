@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
                 'X-Title': 'Monument Generator' // Замініть на назву вашого проекту
             },
             body: JSON.stringify({
-                model: "openai/gpt-4-turbo-preview",
+                model: "openai/gpt-4o",
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: `Опис пам'ятника: ${description}` }
