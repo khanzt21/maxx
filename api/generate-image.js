@@ -1,5 +1,3 @@
-const Replicate = require('replicate');
-
 module.exports = async (req, res) => {
     // CORS headers
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -17,98 +15,106 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { prompt, model = 'black-forest-labs/flux-1.1-pro', aspectRatio = '16:9' } = req.body;
+        const { prompt, model = 'openai/dall-e-3', aspectRatio = '16:9' } = req.body;
         
         if (!prompt) {
             return res.status(400).json({ error: 'Промпт обов\'язковий' });
         }
 
-        if (!process.env.REPLICATE_API_TOKEN) {
-            return res.status(500).json({ error: 'REPLICATE_API_TOKEN не налаштований' });
+        if (!process.env.OPENROUTER_API_KEY) {
+            return res.status(500).json({ error: 'OPENROUTER_API_KEY не налаштований' });
         }
 
-        const replicate = new Replicate({
-            auth: process.env.REPLICATE_API_TOKEN,
-        });
+        // Настройки для разных моделей через OpenRouter
+        let apiEndpoint, requestBody;
 
-        // Параметры для разных моделей
-        let input;
-        
-        if (model.includes('flux')) {
-            input = {
-                prompt: prompt,
-                aspect_ratio: aspectRatio,
-                output_format: "jpg",
-                output_quality: 90,
-                safety_tolerance: 2
-            };
-        } else if (model.includes('stable-diffusion')) {
-            const dimensions = {
-                "16:9": { width: 1024, height: 576 },
-                "1:1": { width: 1024, height: 1024 },
-                "4:3": { width: 1024, height: 768 },
-                "3:4": { width: 768, height: 1024 }
-            };
+        if (model.includes('dall-e')) {
+            // DALL-E через OpenRouter
+            apiEndpoint = 'https://openrouter.ai/api/v1/images/generations';
             
-            input = {
-                prompt: prompt,
-                width: dimensions[aspectRatio]?.width || 1024,
-                height: dimensions[aspectRatio]?.height || 1024,
-                num_inference_steps: 28,
-                guidance_scale: 3.5,
-                num_outputs: 1
+            // Размеры для DALL-E
+            const sizeMap = {
+                '1:1': '1024x1024',
+                '16:9': '1792x1024', 
+                '9:16': '1024x1792',
+                '4:3': '1024x768',
+                '3:4': '768x1024'
             };
-        } else if (model.includes('imagen')) {
-            input = {
+
+            requestBody = {
+                model: model,
                 prompt: prompt,
-                aspect_ratio: aspectRatio,
-                safety_filter_level: "block_medium_and_above"
+                size: sizeMap[aspectRatio] || '1024x1024',
+                quality: 'hd',
+                n: 1
+            };
+        } else if (model.includes('playground')) {
+            // Playground через OpenRouter
+            apiEndpoint = 'https://openrouter.ai/api/v1/images/generations';
+            requestBody = {
+                model: model,
+                prompt: prompt,
+                width: aspectRatio === '16:9' ? 1024 : 1024,
+                height: aspectRatio === '16:9' ? 576 : 1024,
+                guidance_scale: 3,
+                num_inference_steps: 25
             };
         } else {
-            input = {
+            // Другие модели через OpenRouter
+            apiEndpoint = 'https://openrouter.ai/api/v1/images/generations';
+            requestBody = {
+                model: model,
                 prompt: prompt,
-                aspect_ratio: aspectRatio
+                size: '1024x1024'
             };
         }
 
-        // Запуск генерации
-        const prediction = await replicate.predictions.create({
-            model: model,
-            input: input,
+        console.log('Generating image with:', { model, prompt: prompt.substring(0, 100) });
+
+        const response = await fetch(apiEndpoint, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://monument-gen.vercel.app',
+                'X-Title': 'Monument Generator'
+            },
+            body: JSON.stringify(requestBody)
         });
 
-        // Если генерация завершена сразу (маловероятно)
-        if (prediction.status === 'succeeded') {
-            let imageUrl;
-            if (typeof prediction.output === 'string') {
-                imageUrl = prediction.output;
-            } else if (Array.isArray(prediction.output)) {
-                imageUrl = prediction.output[0];
-            } else if (prediction.output && prediction.output.url) {
-                imageUrl = prediction.output.url();
-            } else {
-                imageUrl = prediction.output;
-            }
-            
-            return res.json({ success: true, imageUrl, status: 'completed' });
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('OpenRouter image error:', errorText);
+            throw new Error(`OpenRouter помилка: ${response.status} - ${errorText}`);
         }
-        
-        if (prediction.status === 'failed') {
-            throw new Error(`Генерація не вдалася: ${prediction.error || 'Невідома помилка'}`);
+
+        const data = await response.json();
+        console.log('OpenRouter response:', data);
+
+        // Извлекаем URL изображения
+        let imageUrl;
+        if (data.data && data.data[0] && data.data[0].url) {
+            imageUrl = data.data[0].url;
+        } else if (data.url) {
+            imageUrl = data.url;
+        } else if (data.image_url) {
+            imageUrl = data.image_url;
+        } else {
+            console.error('Unexpected response format:', data);
+            throw new Error('Невідомий формат відповіді від OpenRouter');
         }
-        
-        // Возвращаем ID для проверки статуса
+
         res.json({ 
             success: true, 
-            predictionId: prediction.id, 
-            status: prediction.status 
+            imageUrl: imageUrl,
+            status: 'completed'
         });
 
     } catch (error) {
         console.error('Image generation error:', error);
         res.status(500).json({ 
             error: error.message,
-            details: 'Помилка генерації зображення'
+            details: 'Помилка генерації зображення через OpenRouter'
         });
     }
 };
