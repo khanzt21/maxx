@@ -1,8 +1,6 @@
 {
   "name": "monument-generator",
   "version": "1.0.0",
-  "description": "AI monument generator",
-  "dependencies": {
-    "replicate": "^0.34.1"
-  }
+  "description": "AI monument generator with OpenRouter",
+  "dependencies": {}
 }
