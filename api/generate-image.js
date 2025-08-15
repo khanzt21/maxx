@@ -19,7 +19,8 @@ module.exports = async (req, res) => {
         
         if (!process.env.OPENAI_API_KEY) return res.status(500).json({ error: 'API ключ OPENAI_API_KEY не налаштований' });
 
-        const response = await fetch('https.api.openai.com/v1/images/generations', {
+        // --- ВИПРАВЛЕНИЙ РЯДОК URL ---
+        const response = await fetch('https://api.openai.com/v1/images/generations', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
