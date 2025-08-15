@@ -27,18 +27,16 @@ module.exports = async (req, res) => {
 
         // --- КРОК 1: Створюємо ідеальний промпт за допомогою GPT-4o ---
 
-        const systemPrompt = `You are a professional monument designer. Your task is to convert a user's technical description in Ukrainian into a detailed, professional, and photorealistic prompt in English for the DALL-E 3 image generation model.
+        // ОНОВЛЕНА, БІЛЬШ СУВОРА СИСТЕМНА ІНСТРУКЦІЯ
+        const systemPrompt = `You are an expert technical translator for an architectural visualization program. Your ONLY task is to convert a user's technical description of a monument from Ukrainian into a precise, literal, comma-separated list of keywords and phrases in English for a DALL-E 3 image generation model.
 
-        **Mandatory requirements for the final prompt:**
-        - The monument must be strictly and perfectly centered on its base.
-        - The background must be a plain, solid white background.
-        - The final image must be photorealistic, with professional monument design aesthetics.
-        - Use natural daylight.
-        - Ensure high detail and a sharp focus.
-        - Combine all details into a single, cohesive paragraph. Do not use lists.
-        - The final prompt must be in English.`;
+        **CRITICAL RULES:**
+        1.  **DO NOT BE CREATIVE OR ARTISTIC.** Your goal is technical accuracy, not beauty.
+        2.  Translate the user's text literally. Include all specified materials, dimensions, and elements exactly as described.
+        3.  The final output MUST be a single line of comma-separated keywords and phrases. DO NOT write a paragraph.
+        4.  **ALWAYS** include the following mandatory keywords in the final prompt: "professional product photography of a monument, studio lighting, clean white background, photorealistic, 8k, sharp focus, technical architectural visualization, 3D render".`;
 
-        console.log('Creating a detailed prompt with GPT-4o...');
+        console.log('Creating a technical prompt with GPT-4o...');
 
         const promptCreationResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -50,9 +48,10 @@ module.exports = async (req, res) => {
                 model: "gpt-4o",
                 messages: [
                     { role: "system", content: systemPrompt },
-                    { role: "user", content: `Here is the description of the monument in Ukrainian: "${description}"` }
+                    { role: "user", content: `Convert the following Ukrainian monument description into a technical DALL-E 3 prompt: "${description}"` }
                 ],
-                temperature: 0.6,
+                // ОНОВЛЕНА "ТЕМПЕРАТУРА" ДЛЯ ЗМЕНШЕННЯ ТВОРЧОСТІ
+                temperature: 0.2,
                 max_tokens: 400
             })
         });
@@ -65,7 +64,7 @@ module.exports = async (req, res) => {
         const promptData = await promptCreationResponse.json();
         const finalPrompt = promptData.choices[0].message.content;
 
-        console.log('Generated Prompt for DALL-E 3:', finalPrompt);
+        console.log('Generated technical prompt for DALL-E 3:', finalPrompt);
 
 
         // --- КРОК 2: Генеруємо зображення за допомогою DALL-E 3 ---
@@ -95,7 +94,6 @@ module.exports = async (req, res) => {
         const imageData = await imageCreationResponse.json();
         const imageUrl = imageData.data[0].url;
 
-        // Повертаємо фінальний результат
         return res.json({ 
             success: true, 
             imageUrl: imageUrl
