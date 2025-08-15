@@ -59,26 +59,20 @@ module.exports = async (req, res) => {
                 ],
                 temperature: 0.5, 
                 max_tokens: 600,
-                response_format: { type: "json_object" } // Просимо модель повернути гарантований JSON
+                response_format: { type: "json_object" }
             })
         });
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('OpenRouter error:', errorText);
-            throw new Error(`OpenRouter помилка: ${response.status}`);
+            throw new Error(`OpenRouter помилка: ${response.status}. ${errorText}`);
         }
 
         const data = await response.json();
         const rawPrompt = data.choices[0].message.content.trim();
         
-        try {
-            const jsonPrompt = JSON.parse(rawPrompt);
-            res.json({ success: true, prompt: jsonPrompt });
-        } catch (parseError) {
-            console.error('JSON parsing error:', parseError, 'Raw response:', rawPrompt);
-            res.status(500).json({ error: 'Помилка парсингу JSON відповіді від AI', details: rawPrompt });
-        }
+        const jsonPrompt = JSON.parse(rawPrompt);
+        res.json({ success: true, prompt: jsonPrompt });
 
     } catch (error) {
         console.error('Prompt generation error:', error);
