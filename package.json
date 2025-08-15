@@ -1,7 +1,7 @@
 {
   "name": "monument-generator",
   "version": "1.0.0",
-  "description": "AI-powered monument design generator",
+  "description": "AI-powered monument design generator with ChatGPT and Replicate",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -18,5 +18,8 @@
   },
   "engines": {
     "node": ">=14.0.0"
-  }
+  },
+  "keywords": ["monument", "ai", "chatgpt", "replicate", "image-generation"],
+  "author": "Your Name",
+  "license": "MIT"
 }
