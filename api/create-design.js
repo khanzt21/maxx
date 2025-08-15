@@ -25,18 +25,34 @@ module.exports = async (req, res) => {
             return res.status(500).json({ error: 'API ключ OPENAI_API_KEY не налаштований' });
         }
 
-        // --- КРОК 1: Створення технічної специфікації за допомогою GPT-4o ---
+        // --- КРОК 1: Створення "супер-промпта" за вашим шаблоном ---
 
-        const systemPrompt = `You are an expert technical writer creating a specification for a 3D rendering program. Your goal is to convert a user's Ukrainian description of a monument into a single, detailed, and extremely literal paragraph in English for DALL-E 3.
+        // ОНОВЛЕНА, ДУЖЕ ДЕТАЛЬНА СИСТЕМНА ІНСТРУКЦІЯ З ВАШИМ ПРИКЛАДОМ
+        const systemPrompt = `You are an expert prompt engineer specializing in creating hyper-detailed, photorealistic prompts for the gpt-image-1 model.
+Your task is to take a user's simple description of a monument in Ukrainian and expand it into a comprehensive, highly detailed prompt in English, precisely following the structure and style of the template below.
 
-        **CRITICAL RULES:**
-        1.  **ABSOLUTELY DO NOT add any details, objects, textures, or artistic flourishes** that are not explicitly mentioned in the user's description. Your goal is a literal, 1-to-1 translation of the provided facts into a descriptive paragraph.
-        2.  **DO NOT interpret the user's request creatively.** Be a machine.
-        3.  The final output MUST be a single, descriptive paragraph.
-        4.  Begin the paragraph with this exact phrase: **"Ultra-realistic 3D render of a memorial monument:"**
-        5.  After translating the user's description, conclude the paragraph by appending this exact phrase: **", commercial studio photography, perfectly centered on a pure white background, sharp focus, 8k resolution, photorealistic."**`;
+---
+**TEMPLATE FOR THE FINAL PROMPT:**
 
-        console.log('Creating a technical specification with GPT-4o...');
+"A highly detailed, photorealistic rendering of a vertical black granite (gabbro) tombstone, realistic outdoor cemetery setting, placed on light-gray paving tiles. 
+
+Stele dimensions: [Height] cm height, [Width] cm width, [Thickness] cm thickness. Mounted on a matching pedestal [Pedestal Width] cm wide, [Pedestal Height] cm high, [Pedestal Thickness] cm thick. 
+
+In front of the pedestal — a flower bed with black granite borders: [Flower Bed Length] long side borders and a [Flower Bed Width] front border. Both side borders are perfectly flush with the pedestal edges (not protruding). The interior of the flower bed is filled with small dark gray gravel.
+
+On the stele: [Description of portrait, e.g., an engraved oval black-and-white portrait of a man in a suit], below it — the text “[Name Text]” in capital letters, then the birth and death dates in the format “DD.MM.YYYY ~ DD.MM.YYYY”. Below the dates — [Description of additional artwork, e.g., finely engraved artwork of a candle and three roses].
+
+Material: polished black gabbro granite with sharp, clean edges. Lighting: soft natural daylight, slight overcast, shallow depth of field. Style: ultra-realistic, high-resolution, crisp textures, accurate proportions, subtle reflections on the polished granite."
+---
+
+**YOUR RULES:**
+1.  Analyze the user's Ukrainian input for details like dimensions, materials, names, dates, and artwork.
+2.  Insert these extracted details into the corresponding [bracketed] placeholders in the template.
+3.  If the user does not provide a specific detail (e.g., the setting or lighting), use the default values from the template.
+4.  The final output must be a single, detailed paragraph in English, without any placeholders.
+5.  Pay close attention to translating technical terms correctly.`;
+
+        console.log('Creating a hyper-detailed prompt with GPT-4o...');
 
         const promptCreationResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -48,10 +64,10 @@ module.exports = async (req, res) => {
                 model: "gpt-4o",
                 messages: [
                     { role: "system", content: systemPrompt },
-                    { role: "user", content: `Create a literal 3D render specification for the following description: "${description}"` }
+                    { role: "user", content: `Create a detailed English prompt based on this Ukrainian description: "${description}"` }
                 ],
-                temperature: 0.1,
-                max_tokens: 500
+                temperature: 0.5,
+                max_tokens: 600
             })
         });
 
@@ -63,12 +79,12 @@ module.exports = async (req, res) => {
         const promptData = await promptCreationResponse.json();
         const finalPrompt = promptData.choices[0].message.content;
 
-        console.log('Generated specification for DALL-E 3:', finalPrompt);
+        console.log('Generated hyper-detailed prompt for gpt-image-1:', finalPrompt);
 
 
-        // --- КРОК 2: Генеруємо зображення за допомогою gpt-image-1 ---
+        // --- КРОК 2: Генеруємо зображення з новими параметрами ---
 
-        console.log('Generating image with gpt-image-1 (low quality)...');
+        console.log('Generating image with gpt-image-1...');
 
         const imageCreationResponse = await fetch('https://api.openai.com/v1/images/generations', {
             method: 'POST',
@@ -77,11 +93,11 @@ module.exports = async (req, res) => {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "gpt-image-1",
+                model: "gpt-image-1",      // ОНОВЛЕНА МОДЕЛЬ
                 prompt: finalPrompt,
-                size: "1024x1024",
-                quality: "low", // <--- ЗМІНЕНО НА НАЙНИЖЧУ ЯКІСТЬ
-                n: 1
+                size: "1024x1792",       // ОНОВЛЕНИЙ РОЗМІР (ВЕРТИКАЛЬНИЙ)
+                quality: "hd",
+                n: 1                     // ОНОВЛЕНА КІЛЬКІСТЬ
             })
         });
 
