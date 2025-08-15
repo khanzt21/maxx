@@ -278,7 +278,7 @@
     <div class="container">
         <div class="header">
             <h1>🏛️ Генератор дизайну пам'ятників</h1>
-            <p>Повноцінна генерація промпта + зображення за допомогою ШІ</p>
+            <p>AI генератор з ChatGPT та Replicate</p>
         </div>
 
         <div class="main-content">
@@ -286,27 +286,26 @@
                 <h2>📝 Опис пам'ятника</h2>
                 
                 <button class="btn example-btn" onclick="insertExample()">
-                    📋 Вставити приклад опису
+                    📋 Вставити приклад
                 </button>
                 
                 <div class="form-group">
                     <label for="description">Технічний опис пам'ятника:</label>
-                    <textarea id="description" placeholder="Введіть детальний опис пам'ятника з розмірами, матеріалами та іншими характеристиками..."></textarea>
+                    <textarea id="description" placeholder="Введіть детальний опис пам'ятника..."></textarea>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="imageModel">Модель для генерації:</label>
+                        <label for="imageModel">Модель:</label>
                         <select id="imageModel">
-                            <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (швидка)</option>
+                            <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro</option>
                             <option value="stability-ai/stable-diffusion-3.5-large">Stable Diffusion 3.5</option>
-                            <option value="black-forest-labs/flux-dev">FLUX Dev (якісна)</option>
-                            <option value="stability-ai/sdxl">SDXL (стабільна)</option>
+                            <option value="black-forest-labs/flux-dev">FLUX Dev</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
-                        <label for="aspectRatio">Співвідношення сторін:</label>
+                        <label for="aspectRatio">Формат:</label>
                         <select id="aspectRatio">
                             <option value="1:1">1:1 (квадрат)</option>
                             <option value="4:3">4:3 (стандарт)</option>
@@ -317,20 +316,19 @@
                 </div>
 
                 <button class="btn" onclick="generateMonument()">
-                    🎨 Створити промпт + згенерувати зображення
+                    🎨 Створити пам'ятник
                 </button>
 
                 <div id="error-message" class="error"></div>
                 <div id="success-message" class="success"></div>
 
                 <div class="tips">
-                    <h4>💡 Поради для кращого результату:</h4>
+                    <h4>💡 Поради:</h4>
                     <ul>
-                        <li>Вкажіть точні розміри стели, тумби та квітника</li>
-                        <li>Опишіть матеріали (граніт, мармур, бронза)</li>
-                        <li>Додайте деталі облицювання та обробки</li>
-                        <li>Вкажіть тип пам'ятника та кількість сторін</li>
-                        <li>Опишіть художню роботу та декоративні елементи</li>
+                        <li>Вкажіть розміри стели та тумби</li>
+                        <li>Опишіть матеріали (граніт, мармур)</li>
+                        <li>Додайте деталі обробки</li>
+                        <li>Опишіть художню роботу</li>
                     </ul>
                 </div>
             </div>
@@ -340,24 +338,24 @@
                 
                 <div id="loading" class="loading">
                     <div class="spinner"></div>
-                    <div class="progress-text" id="progress-text">Обробляю опис...</div>
-                    <div class="progress-detail" id="progress-detail">Підготовка до генерації</div>
+                    <div class="progress-text" id="progress-text">Обробляю...</div>
+                    <div class="progress-detail" id="progress-detail">Підготовка</div>
                 </div>
 
                 <div id="prompt-section" style="display: none;">
-                    <h3>📝 Згенерований промпт:</h3>
+                    <h3>📝 Промпт:</h3>
                     <div id="prompt-output" class="prompt-display"></div>
-                    <button class="copy-btn" onclick="copyPrompt()">📋 Скопіювати промпт</button>
+                    <button class="copy-btn" onclick="copyPrompt()">📋 Скопіювати</button>
                 </div>
 
                 <div class="image-container" id="image-container">
                     <div class="placeholder">
-                        🏛️ Тут з'явиться зображення вашого пам'ятника
+                        🏛️ Тут з'явиться ваш пам'ятник
                     </div>
                 </div>
 
-                <a href="#" id="download-btn" class="download-btn" style="display: none;">
-                    💾 Завантажити зображення
+                <a href="#" id="download-btn" class="download-btn">
+                    💾 Завантажити
                 </a>
             </div>
         </div>
@@ -367,21 +365,18 @@
         let generatedPrompt = '';
 
         function insertExample() {
-            const example = `Розмір стели: 120 х 60 х 8 см
+            document.getElementById('description').value = `Розмір стели: 120 х 60 х 8 см
 Матеріал: букінський граніт
 Облицювання верх: сірий граніт класичний
 Облицювання бока: грес під покосту
 Тип пам'ятника: Вертикальний 1 сторона
 
 Розмір тумби: 70 х 20 х 15 см
-
 Розмір квітника: 120 х 70 см (3 поручні)
 
-Дрібні деталі: Надгробна хвилька з плити (широка) сіра, розміром 61 х 55 см
+Дрібні деталі: Надгробна хвилька сіра 61 х 55 см
 Художня робота: 1 сторона 1 фото портрет
 Додаткові елементи: Бронзовий вінок, гравірування тексту`;
-            
-            document.getElementById('description').value = example;
         }
 
         function updateProgress(text, detail) {
@@ -390,7 +385,7 @@
         }
 
         async function generatePrompt(description) {
-            updateProgress('Створюю промпт...', 'Аналізую опис через ChatGPT');
+            updateProgress('Створюю промпт...', 'ChatGPT аналізує опис');
             
             const response = await fetch('/api/generate-prompt', {
                 method: 'POST',
@@ -400,14 +395,14 @@
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || 'Помилка генерації промпта');
+                throw new Error(error.error || 'Помилка промпта');
             }
 
             return await response.json();
         }
 
         async function generateImage(prompt, model, aspectRatio) {
-            updateProgress('Генерую зображення...', `Використовую модель ${model}`);
+            updateProgress('Генерую зображення...', `Модель: ${model}`);
             
             const response = await fetch('/api/generate-image', {
                 method: 'POST',
@@ -417,7 +412,7 @@
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || 'Помилка генерації зображення');
+                throw new Error(error.error || 'Помилка зображення');
             }
 
             const result = await response.json();
@@ -430,16 +425,16 @@
                 return await waitForCompletion(result.predictionId);
             }
             
-            throw new Error('Невідома відповідь від сервера');
+            throw new Error('Невідома відповідь');
         }
 
         async function waitForCompletion(predictionId) {
-            updateProgress('Генерую зображення...', 'Очікую завершення...');
-            
             let attempts = 0;
             while (attempts < 60) {
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 attempts++;
+                
+                updateProgress('Генерую зображення...', `Очікую... (${attempts}/60)`);
                 
                 const response = await fetch(`/api/check-status/${predictionId}`);
                 const result = await response.json();
@@ -451,11 +446,9 @@
                 if (result.status === 'failed') {
                     throw new Error(result.error || 'Генерація не вдалася');
                 }
-                
-                updateProgress('Генерую зображення...', `Статус: ${result.status} (спроба ${attempts})`);
             }
             
-            throw new Error('Перевищено час очікування (2 хвилини)');
+            throw new Error('Час очікування вичерпано');
         }
 
         function displayPrompt(prompt) {
@@ -466,11 +459,11 @@
 
         function displayImage(imageUrl) {
             const container = document.getElementById('image-container');
-            container.innerHTML = `<img src="${imageUrl}" alt="Згенерований пам'ятник" class="generated-image">`;
+            container.innerHTML = `<img src="${imageUrl}" alt="Пам'ятник" class="generated-image">`;
             
             const downloadBtn = document.getElementById('download-btn');
             downloadBtn.href = imageUrl;
-            downloadBtn.download = 'monument-design.jpg';
+            downloadBtn.download = 'monument.jpg';
             downloadBtn.style.display = 'inline-block';
         }
 
@@ -479,12 +472,6 @@
                 await navigator.clipboard.writeText(generatedPrompt);
                 showSuccess('Промпт скопійовано! 📋');
             } catch (err) {
-                const textArea = document.createElement('textarea');
-                textArea.value = generatedPrompt;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
                 showSuccess('Промпт скопійовано! 📋');
             }
         }
@@ -493,14 +480,14 @@
             const errorElement = document.getElementById('error-message');
             errorElement.textContent = message;
             errorElement.style.display = 'block';
-            setTimeout(() => errorElement.style.display = 'none', 8000);
+            setTimeout(() => errorElement.style.display = 'none', 5000);
         }
 
         function showSuccess(message) {
             const successElement = document.getElementById('success-message');
             successElement.textContent = message;
             successElement.style.display = 'block';
-            setTimeout(() => successElement.style.display = 'none', 4000);
+            setTimeout(() => successElement.style.display = 'none', 3000);
         }
 
         async function generateMonument() {
@@ -509,7 +496,7 @@
             const aspectRatio = document.getElementById('aspectRatio').value;
 
             if (!description) {
-                showError('Будь ласка, введіть опис пам\'ятника');
+                showError('Введіть опис пам\'ятника');
                 return;
             }
 
@@ -522,22 +509,22 @@
                 
                 document.getElementById('prompt-section').style.display = 'none';
                 document.getElementById('download-btn').style.display = 'none';
-                document.getElementById('image-container').innerHTML = '<div class="placeholder">🏛️ Генерується зображення...</div>';
+                document.getElementById('image-container').innerHTML = '<div class="placeholder">🏛️ Генерується...</div>';
                 
                 const promptResult = await generatePrompt(description);
                 displayPrompt(promptResult.prompt);
                 
                 const imageUrl = await generateImage(promptResult.prompt, model, aspectRatio);
                 
-                updateProgress('Завершено!', 'Зображення успішно згенеровано');
+                updateProgress('Готово!', 'Пам\'ятник згенеровано');
                 displayImage(imageUrl);
                 
-                showSuccess('Дизайн пам\'ятника успішно згенеровано! 🎉');
+                showSuccess('Пам\'ятник готовий! 🎉');
                 
             } catch (error) {
                 console.error('Помилка:', error);
                 showError(`Помилка: ${error.message}`);
-                document.getElementById('image-container').innerHTML = '<div class="placeholder">❌ Помилка генерації</div>';
+                document.getElementById('image-container').innerHTML = '<div class="placeholder">❌ Помилка</div>';
             } finally {
                 loadingElement.style.display = 'none';
                 generateBtn.disabled = false;
