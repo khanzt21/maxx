@@ -15,7 +15,7 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { prompt, model = 'openai/dall-e-3', aspectRatio = '16:9' } = req.body;
+        const { prompt } = req.body;
         
         if (!prompt) {
             return res.status(400).json({ error: 'Промпт обов\'язковий' });
@@ -25,53 +25,9 @@ module.exports = async (req, res) => {
             return res.status(500).json({ error: 'OPENROUTER_API_KEY не налаштований' });
         }
 
-        // Настройки для разных моделей через OpenRouter
-        let apiEndpoint, requestBody;
+        console.log('Generating image with DALL-E 3 via OpenRouter...');
 
-        if (model.includes('dall-e')) {
-            // DALL-E через OpenRouter
-            apiEndpoint = 'https://openrouter.ai/api/v1/images/generations';
-            
-            // Размеры для DALL-E
-            const sizeMap = {
-                '1:1': '1024x1024',
-                '16:9': '1792x1024', 
-                '9:16': '1024x1792',
-                '4:3': '1024x768',
-                '3:4': '768x1024'
-            };
-
-            requestBody = {
-                model: model,
-                prompt: prompt,
-                size: sizeMap[aspectRatio] || '1024x1024',
-                quality: 'hd',
-                n: 1
-            };
-        } else if (model.includes('playground')) {
-            // Playground через OpenRouter
-            apiEndpoint = 'https://openrouter.ai/api/v1/images/generations';
-            requestBody = {
-                model: model,
-                prompt: prompt,
-                width: aspectRatio === '16:9' ? 1024 : 1024,
-                height: aspectRatio === '16:9' ? 576 : 1024,
-                guidance_scale: 3,
-                num_inference_steps: 25
-            };
-        } else {
-            // Другие модели через OpenRouter
-            apiEndpoint = 'https://openrouter.ai/api/v1/images/generations';
-            requestBody = {
-                model: model,
-                prompt: prompt,
-                size: '1024x1024'
-            };
-        }
-
-        console.log('Generating image with:', { model, prompt: prompt.substring(0, 100) });
-
-        const response = await fetch(apiEndpoint, {
+        const response = await fetch('https://openrouter.ai/api/v1/images/generations', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -79,17 +35,23 @@ module.exports = async (req, res) => {
                 'HTTP-Referer': 'https://monument-gen.vercel.app',
                 'X-Title': 'Monument Generator'
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify({
+                model: "openai/dall-e-3",
+                prompt: prompt,
+                size: "1024x1024",
+                quality: "hd",
+                n: 1
+            })
         });
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('OpenRouter image error:', errorText);
-            throw new Error(`OpenRouter помилка: ${response.status} - ${errorText}`);
+            console.error('OpenRouter image error:', response.status, errorText);
+            throw new Error(`Помилка генерації: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log('OpenRouter response:', data);
+        console.log('OpenRouter response received');
 
         // Извлекаем URL изображения
         let imageUrl;
@@ -97,24 +59,20 @@ module.exports = async (req, res) => {
             imageUrl = data.data[0].url;
         } else if (data.url) {
             imageUrl = data.url;
-        } else if (data.image_url) {
-            imageUrl = data.image_url;
         } else {
             console.error('Unexpected response format:', data);
-            throw new Error('Невідомий формат відповіді від OpenRouter');
+            throw new Error('Невідомий формат відповіді');
         }
 
         res.json({ 
             success: true, 
-            imageUrl: imageUrl,
-            status: 'completed'
+            imageUrl: imageUrl
         });
 
     } catch (error) {
         console.error('Image generation error:', error);
         res.status(500).json({ 
-            error: error.message,
-            details: 'Помилка генерації зображення через OpenRouter'
+            error: error.message || 'Помилка генерації зображення'
         });
     }
 };
