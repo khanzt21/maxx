@@ -13,11 +13,20 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { predictionId } = req.query;
+        // Получаем predictionId из URL параметра
+        const predictionId = req.url.split('/').pop();
+        
+        if (!predictionId) {
+            return res.status(400).json({ error: 'predictionId обов\'язковий' });
+        }
         
         const response = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
             headers: { 'Authorization': `Bearer ${process.env.REPLICATE_API_TOKEN}` }
         });
+        
+        if (!response.ok) {
+            throw new Error(`Replicate API error: ${response.status}`);
+        }
         
         const prediction = await response.json();
         
