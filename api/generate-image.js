@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+const Replicate = require('replicate');
 
 module.exports = async (req, res) => {
     // CORS headers
@@ -23,55 +23,92 @@ module.exports = async (req, res) => {
             return res.status(400).json({ error: 'Промпт обов\'язковий' });
         }
 
-        let requestBody;
-        
-        if (model.includes('flux')) {
-            requestBody = {
-                input: {
-                    prompt: prompt,
-                    aspect_ratio: aspectRatio,
-                    output_format: "jpg",
-                    output_quality: 90
-                }
-            };
-        } else {
-            requestBody = {
-                input: {
-                    prompt: prompt,
-                    width: 1024,
-                    height: 1024
-                }
-            };
+        if (!process.env.REPLICATE_API_TOKEN) {
+            return res.status(500).json({ error: 'REPLICATE_API_TOKEN не налаштований' });
         }
 
-        const response = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.REPLICATE_API_TOKEN}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
+        const replicate = new Replicate({
+            auth: process.env.REPLICATE_API_TOKEN,
         });
 
-        if (!response.ok) {
-            throw new Error(`Replicate помилка: ${response.status}`);
+        // Параметры для разных моделей
+        let input;
+        
+        if (model.includes('flux')) {
+            input = {
+                prompt: prompt,
+                aspect_ratio: aspectRatio,
+                output_format: "jpg",
+                output_quality: 90,
+                safety_tolerance: 2
+            };
+        } else if (model.includes('stable-diffusion')) {
+            const dimensions = {
+                "16:9": { width: 1024, height: 576 },
+                "1:1": { width: 1024, height: 1024 },
+                "4:3": { width: 1024, height: 768 },
+                "3:4": { width: 768, height: 1024 }
+            };
+            
+            input = {
+                prompt: prompt,
+                width: dimensions[aspectRatio]?.width || 1024,
+                height: dimensions[aspectRatio]?.height || 1024,
+                num_inference_steps: 28,
+                guidance_scale: 3.5,
+                num_outputs: 1
+            };
+        } else if (model.includes('imagen')) {
+            input = {
+                prompt: prompt,
+                aspect_ratio: aspectRatio,
+                safety_filter_level: "block_medium_and_above"
+            };
+        } else {
+            input = {
+                prompt: prompt,
+                aspect_ratio: aspectRatio
+            };
         }
 
-        const prediction = await response.json();
-        
+        // Запуск генерации
+        const prediction = await replicate.predictions.create({
+            model: model,
+            input: input,
+        });
+
+        // Если генерация завершена сразу (маловероятно)
         if (prediction.status === 'succeeded') {
-            const imageUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+            let imageUrl;
+            if (typeof prediction.output === 'string') {
+                imageUrl = prediction.output;
+            } else if (Array.isArray(prediction.output)) {
+                imageUrl = prediction.output[0];
+            } else if (prediction.output && prediction.output.url) {
+                imageUrl = prediction.output.url();
+            } else {
+                imageUrl = prediction.output;
+            }
+            
             return res.json({ success: true, imageUrl, status: 'completed' });
         }
         
         if (prediction.status === 'failed') {
-            throw new Error('Генерація не вдалася');
+            throw new Error(`Генерація не вдалася: ${prediction.error || 'Невідома помилка'}`);
         }
         
-        res.json({ success: true, predictionId: prediction.id, status: prediction.status });
+        // Возвращаем ID для проверки статуса
+        res.json({ 
+            success: true, 
+            predictionId: prediction.id, 
+            status: prediction.status 
+        });
 
     } catch (error) {
-        console.error('Image error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Image generation error:', error);
+        res.status(500).json({ 
+            error: error.message,
+            details: 'Помилка генерації зображення'
+        });
     }
 };
