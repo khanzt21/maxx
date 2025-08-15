@@ -21,53 +21,84 @@ module.exports = async (req, res) => {
             return res.status(400).json({ error: 'Промпт обов\'язковий' });
         }
 
-        if (!process.env.OPENROUTER_API_KEY) {
-            return res.status(500).json({ error: 'OPENROUTER_API_KEY не налаштований' });
+        // Проверяем наличие ключей
+        if (!process.env.OPENAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
+            return res.status(500).json({ error: 'API ключ не налаштований' });
         }
 
-        console.log('Generating image with DALL-E 3 via OpenRouter...');
+        console.log('Generating image with DALL-E 3...');
 
-        const response = await fetch('https://openrouter.ai/api/v1/images/generations', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://monument-gen.vercel.app',
-                'X-Title': 'Monument Generator'
-            },
-            body: JSON.stringify({
-                model: "openai/dall-e-3",
-                prompt: prompt,
-                size: "1024x1024",
-                quality: "hd",
-                n: 1
-            })
-        });
+        // Пробуем OpenAI напрямую, если есть ключ
+        if (process.env.OPENAI_API_KEY) {
+            const response = await fetch('https://api.openai.com/v1/images/generations', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: "dall-e-3",
+                    prompt: prompt,
+                    size: "1024x1024",
+                    quality: "hd",
+                    n: 1
+                })
+            });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('OpenRouter image error:', response.status, errorText);
-            throw new Error(`Помилка генерації: ${response.status}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('OpenAI error:', response.status, errorText);
+                throw new Error(`OpenAI помилка: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const imageUrl = data.data[0].url;
+
+            return res.json({ 
+                success: true, 
+                imageUrl: imageUrl
+            });
         }
 
-        const data = await response.json();
-        console.log('OpenRouter response received');
+        // Fallback: Используем OpenRouter для текстовой генерации описания изображения
+        if (process.env.OPENROUTER_API_KEY) {
+            // Генерируем описание для альтернативного сервиса
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': 'https://monument-gen.vercel.app',
+                    'X-Title': 'Monument Generator'
+                },
+                body: JSON.stringify({
+                    model: "openai/gpt-4-turbo-preview",
+                    messages: [
+                        {
+                            role: "user",
+                            content: `Вибачте, але генерація зображень тимчасово недоступна. Ось детальний текстовий опис зображення пам'ятника на основі промпта: "${prompt}"`
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 500
+                })
+            });
 
-        // Извлекаем URL изображения
-        let imageUrl;
-        if (data.data && data.data[0] && data.data[0].url) {
-            imageUrl = data.data[0].url;
-        } else if (data.url) {
-            imageUrl = data.url;
-        } else {
-            console.error('Unexpected response format:', data);
-            throw new Error('Невідомий формат відповіді');
+            if (!response.ok) {
+                throw new Error(`OpenRouter помилка: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const description = data.choices[0].message.content;
+
+            return res.json({ 
+                success: false, 
+                error: 'Генерація зображень тимчасово недоступна',
+                description: description
+            });
         }
 
-        res.json({ 
-            success: true, 
-            imageUrl: imageUrl
-        });
+        throw new Error('Немає доступних API ключів');
 
     } catch (error) {
         console.error('Image generation error:', error);
