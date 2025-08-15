@@ -5,6 +5,12 @@ module.exports = async (req, res) => {
         env: {
             hasOpenRouter: !!process.env.OPENROUTER_API_KEY,
             hasReplicate: !!process.env.REPLICATE_API_TOKEN
+        },
+        apiEndpoints: {
+            health: '/api/health',
+            generatePrompt: '/api/generate-prompt',
+            generateImage: '/api/generate-image',
+            checkStatus: '/api/check-status/[predictionId]'
         }
     });
 };
