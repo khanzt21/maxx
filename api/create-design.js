@@ -94,8 +94,8 @@ Material: polished black gabbro granite with sharp, clean edges. Lighting: soft 
             body: JSON.stringify({
                 model: "gpt-image-1",
                 prompt: finalPrompt,
-                size: "1024x1792",
-                quality: "high", // <--- ВИПРАВЛЕНО З "hd" НА "high"
+                size: "1024x1536", // <--- ВИПРАВЛЕНО НА ПІДТРИМУВАНИЙ ВЕРТИКАЛЬНИЙ РОЗМІР
+                quality: "high",
                 n: 1
             })
         });
