@@ -223,6 +223,11 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Главная страница
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Сервер запущений на порту ${PORT}`);
     console.log(`📱 Фронтенд: http://localhost:${PORT}`);
